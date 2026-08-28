@@ -26,6 +26,12 @@ const options: Array<{
         title: 'Acelerômetro',
         description: 'Verifique a rede conectada e o status da conexão',
         route: 'AcelerometroScreen'
+    },
+
+    {
+      title: 'Camera',
+      description: 'tire fotos',
+      route: 'CameraScreen'
     }
 ]
 

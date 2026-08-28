@@ -6,7 +6,7 @@ import HomeScreen from './src/screens/Home';
 import PosicaoGpsScreen from './src/screens/PosicaoGps';
 import RedesWifiScreen from './src/screens/RedesWifi';
 import AcelerometroScreen from './src/screens/Acelerometro';
-
+import CameraScreen from './src/screens/Camera';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -39,6 +39,13 @@ export default function App() {
         component={AcelerometroScreen} 
         options={{title: 'Dados da conexão'}}
         />
+
+         <Stack.Screen 
+        name='CameraScreen' 
+        component={CameraScreen} 
+        options={{title: 'Dados da conexão'}}
+        />
+
 
 
 
