@@ -30,7 +30,7 @@ const options: Array<{
 
     {
       title: 'Camera',
-      description: 'tire fotos',
+      description: 'Tire fotos e grave vídeos',
       route: 'CameraScreen'
     }
 ]
