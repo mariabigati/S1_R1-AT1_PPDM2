@@ -1,214 +1,274 @@
 import { useState, useEffect, useRef } from "react";
 import { View, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
 import {
-    CameraView,
-    useCameraPermissions,
-    useMicrophonePermissions,
-    CameraType,
-    FlashMode,
-    CameraMode,
+  CameraView,
+  useCameraPermissions,
+  useMicrophonePermissions,
+  CameraType,
+  FlashMode,
+  CameraMode,
 } from "expo-camera";
 
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+
+import * as MediaLibrary from "expo-media-library";
 
 // criar um botão para o flash, com ligado desligado e automático
 // criar uma função para alternar a camera (traseira/frontal)
 
 export default function CameraScreen() {
-    const [permission, setPermission] = useCameraPermissions();
-    const [micPermission, setMicPermission] = useMicrophonePermissions();
+  const [permission, setPermission] = useCameraPermissions();
+  const [micPermission, setMicPermission] = useMicrophonePermissions();
 
-    const [CameraMode, setCameraMode] = useState<CameraMode>("picture");
-    const [isRecording, setIsRecording] = useState(false);
+  const [CameraMode, setCameraMode] = useState<CameraMode>("picture");
+  const [isRecording, setIsRecording] = useState(false);
 
-    const [lado, setLado] = useState<CameraType>('back')
-    const [flashMode, setFlashMode] = useState<FlashMode>('off')
-    const cameraRef = useRef<CameraView>(null);
+  const [lado, setLado] = useState<CameraType>("back");
+  const [flashMode, setFlashMode] = useState<FlashMode>("off");
+  const [torchMode, setTorchMode] = useState<FlashMode>("off");
+  const cameraRef = useRef<CameraView>(null);
 
-    useEffect(() => {
-        (async () => {
-            await setPermission();
-            await setMicPermission();
-        })();
-    }, []);
+  useEffect(() => {
+    (async () => {
+      await setPermission();
+      await setMicPermission();
+    })();
+  }, []);
 
-    const handleCameraMode = (mode: CameraMode) =>{
-        setCameraMode(mode)
-        if(isRecording){
-            setIsRecording(false);
-            cameraRef.current?.stopRecording();
+  const handleCameraMode = (mode: CameraMode) => {
+    setCameraMode(mode);
+  };
+
+  const handleFlashMode = () => {
+    setFlashMode((current) => {
+      if (current === "off") return "on";
+      if (current === "on") return "auto";
+      return "off";
+    });
+  };
+
+  const handleCameraFacing = () => {
+    setLado((current) => (current === "back" ? "front" : "back"));
+  };
+
+  const saveMedias = async (uri: string) => {
+    try {
+      const permission = await MediaLibrary.requestPermissionsAsync(true);
+      if (permission.granted) {
+        await MediaLibrary.saveToLibraryAsync(uri);
+        Alert.alert("Sucesso", 'Arquivo salvo na galeria!');
+      } else {
+        Alert.alert("Permissão negada!");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const takeMedia = async () => {
+    if (!cameraRef.current) return;
+    try {
+      if (CameraMode === "picture") {
+        const foto = await cameraRef.current.takePictureAsync();
+        //salvar na galeria
+        saveMedias(foto.uri);
+      } else {
+        if (isRecording) {
+          setIsRecording(false);
+          cameraRef.current?.stopRecording();
+        } else {
+               //setar gravação de video state
+          setIsRecording(true);
+            // gravar com a biblioteca
+          const video = await cameraRef.current?.recordAsync({
+            maxDuration: 30,
+          });
+
+          if (video?.uri) {
+            //salvar na galeria
+            await saveMedias(video.uri);
+          }
         }
+        setIsRecording(false);
+      }
+    } catch (error) {
+      setIsRecording(false);
+      Alert.alert("Erro", "não foi possível capturar a mídia");
     }
+  };
 
-    const handleFlashMode = () => {
-        setFlashMode((current) => (current === 'off' ? 'on' : 'off'))
-    }
-
-    const handleCameraFacing = () => {
-        setLado(current => (current === 'back' ? 'front' : 'back'))
-    }
-
-    const takeMedia = async () => {
-        if(!cameraRef.current) return;
-        try {
-            if(CameraMode === 'picture'){
-                const foto = await cameraRef.current.takePictureAsync();
-                //salvar na galeria
-            } else {
-                //setar gravação de video state
-                // gravar com a biblioteca
-                // if (video?.uri) {
-                //     //salvar na galeria
-                // }
-                setIsRecording(false)
-            }
-            
-        } catch (error) {
-            setIsRecording(false);
-            Alert.alert('Erro', "não foi possível capturar a mídia");
-        }
-    }
-
-    return (<View style={styles.container}>
-        <CameraView
+  return (
+    <View style={styles.container}>
+      <CameraView
         style={StyleSheet.absoluteFillObject}
-            ref={cameraRef}
-            mode={CameraMode}
-            facing={lado}
-            flash={flashMode}
-        >
-            <View style={styles.overlayContainer}>
-                <View style={styles.topContainer}>
-                    <TouchableOpacity style={styles.iconButton} onPress={handleFlashMode}>
+        ref={cameraRef}
+        mode={CameraMode}
+        mute={CameraMode === "picture"}
+        facing={lado}
+        flash={flashMode}
+        enableTorch={flashMode === 'on' || flashMode === 'auto'}
+      >
+        <View style={styles.overlayContainer}>
+          <View style={styles.topContainer}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleFlashMode}
+            >
+              <FontAwesome6
+                name={"bolt-lightning"}
+                size={24}
+                color={flashMode === "on" ? "#FFD700" : flashMode === 'auto' ? "#e2d797" : "white"}
+              />
+            </TouchableOpacity>
 
-                        <FontAwesome6 name="bolt-lightning" size={24}  color={flashMode === 'on' ? '#FFD700' : 'white'} />
-                       
-                    </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleCameraFacing}
+            >
+              <FontAwesome6 name="camera-rotate" size={34} color="white" />
+            </TouchableOpacity>
+          </View>
 
-                    <TouchableOpacity style={styles.iconButton} onPress={handleCameraFacing}>
-                        <FontAwesome6 name="camera-rotate" size={34} color="white" />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.bottomContainer}>
-                    {/* <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <View style={styles.bottomContainer}>
+            {/* <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                         <Text style={styles.backText}>Voltar</Text>
                     </TouchableOpacity> */}
 
-                    <View style={styles.controlsContainer}>
-                        <View style={styles.modeSelector}>
-                            <TouchableOpacity onPress={() => handleCameraMode('picture')}>
-                                <Text style={[styles.modeText, CameraMode === 'picture' && styles.modeTextSelected]}>Foto</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => handleCameraMode('video')}>
-                                <Text style={[styles.modeText, CameraMode === 'video' && styles.modeTextSelected]}>Vídeo</Text>
-                            </TouchableOpacity>
-                        </View>
+            <View style={styles.controlsContainer}>
+              <View style={styles.modeSelector}>
+                <TouchableOpacity onPress={() => handleCameraMode("picture")}>
+                  <Text
+                    style={[
+                      styles.modeText,
+                      CameraMode === "picture" && styles.modeTextSelected,
+                    ]}
+                  >
+                    Foto
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleCameraMode("video")}>
+                  <Text
+                    style={[
+                      styles.modeText,
+                      CameraMode === "video" && styles.modeTextSelected,
+                    ]}
+                  >
+                    Vídeo
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-                        <TouchableOpacity
-                            style={[styles.captureButton, isRecording && styles.captureButtonRecording]}
-                            onPress={takeMedia}
-                        >
-                            <View style={[styles.captureInner, isRecording && styles.captureInnerRecording]} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
+              <TouchableOpacity
+                style={[
+                  styles.captureButton,
+                  isRecording && styles.captureButtonRecording,
+                ]}
+                onPress={takeMedia}
+              >
+                <View
+                  style={[
+                    styles.captureInner,
+                    isRecording && styles.captureInnerRecording,
+                  ]}
+                />
+              </TouchableOpacity>
             </View>
-        </CameraView>
-
+          </View>
+        </View>
+      </CameraView>
     </View>
-)
+  );
 }
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: 'black',
-    },
-    overlayContainer: {
-        flex: 1,
-        justifyContent: 'space-between',
-        backgroundColor: 'transparent',
-    },
-    topContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 40,
-    },
-    iconButton: {
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        padding: 10,
-        borderRadius: 25,
-    },
-    bottomContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'flex-end',
-        paddingBottom: 40,
-    },
-    backButton: {
-        position: 'absolute',
-        left: 20,
-        bottom: 40,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 12,
-        borderRadius: 8,
-    },
-    backText: {
-        color: 'white',
-        fontSize: 16,
-    },
-    controlsContainer: {
-        alignItems: 'center',
-    },
-    modeSelector: {
-        flexDirection: 'row',
-        gap: 20,
-        marginBottom: 20,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
-    },
-    modeText: {
-        color: '#888',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    modeTextSelected: {
-        color: 'white',
-    },
-    captureButton: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    captureButtonRecording: {
-        backgroundColor: 'rgba(255, 0, 0, 0.3)',
-    },
-    captureInner: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        backgroundColor: 'white',
-    },
-    captureInnerRecording: {
-        width: 30,
-        height: 30,
-        borderRadius: 8,
-        backgroundColor: 'red',
-    },
-    permissionButton: {
-        backgroundColor: '#007AFF',
-        padding: 12,
-        borderRadius: 8,
-        alignSelf: 'center',
-    },
-    permissionText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: "black",
+  },
+  overlayContainer: {
+    flex: 1,
+    justifyContent: "space-between",
+    backgroundColor: "transparent",
+  },
+  topContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 40,
+  },
+  iconButton: {
+    backgroundColor: "rgba(0,0,0,0.4)",
+    padding: 10,
+    borderRadius: 25,
+  },
+  bottomContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingBottom: 40,
+  },
+  backButton: {
+    position: "absolute",
+    left: 20,
+    bottom: 40,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 12,
+    borderRadius: 8,
+  },
+  backText: {
+    color: "white",
+    fontSize: 16,
+  },
+  controlsContainer: {
+    alignItems: "center",
+  },
+  modeSelector: {
+    flexDirection: "row",
+    gap: 20,
+    marginBottom: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  modeText: {
+    color: "#888",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modeTextSelected: {
+    color: "white",
+  },
+  captureButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  captureButtonRecording: {
+    backgroundColor: "rgba(255, 0, 0, 0.3)",
+  },
+  captureInner: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "white",
+  },
+  captureInnerRecording: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: "red",
+  },
+  permissionButton: {
+    backgroundColor: "#007AFF",
+    padding: 12,
+    borderRadius: 8,
+    alignSelf: "center",
+  },
+  permissionText: {
+    color: "white",
+    fontWeight: "bold",
+  },
 });
